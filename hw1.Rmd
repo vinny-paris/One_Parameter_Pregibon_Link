@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ##1
 
-After reading in the data I created a small function that found the liklihood function for a Binomial random variable with a Pregibon One-Parameter Link. The random variable was the tolerance of the the beetle at a certain level of toxicity. Please see attached hand written sheet for the derivation. After that both a logit and a cloglog model was fit to both series. When it was shown that the cloglog had a smaller liklihood in both samples the decision was made to use it's estimates as the starting value in optim for the linear parameters. The lambda's initial estimate was decided to be half way point between the logit (lambda = 1) and the cloglog (lambda = 0). The first of the two to be presented is the cloglog.
+After reading in the data I created a small function that found the liklihood function for a Binomial random variable with a Pregibon One-Parameter Link. The random variable was the tolerance of the the beetle at a certain level of toxicity. Please see attached hand written sheet for the derivation. After that both a logit and a cloglog model was fit to both series. When it was shown that the cloglog had a smaller liklihood in both samples the decision was made to use it's estimates as the starting value in optim for the linear parameters. The lambda's initial estimate was decided to be half way point between the logit (lambda = 1) and the cloglog (lambda = 0). 
 
 
 It should be noted that I had to approximate the cloglog value by choosing a sufficently small lambda as it asymptotically tends to the complementary log-log model. Optim was then used to find the MLE's of the parameters. The 1 and 2 after the model/variable name indicate which series it's from. 
@@ -97,7 +97,11 @@ loglik <- function(data, par){
 
 jj1 <- optim(c(-40,10,.5), loglik, data = data, hessian = F)
 jj1
+```
+The above is the fit for the estimated function on Series 1 and below is the fit for Series 2 with the estimated link parameter.
 
+
+```{r}
 jj2 <- optim(c(-40,10,.5), loglik, data = dit, hessian = F)
 jj2
 ```
@@ -152,6 +156,8 @@ unified_data <- data.frame(doseu, pu, nu)
 cloglog_unified <- optim(c(0,0), loglik, data = unified_data, hessian = T)
 cloglog_unified
 ```
+The above is the unified data set with a complimentary log log link (as was decided in part 1)
+
 
 ```{r, echo = T}
 chi_unified <- -2*(clogmod2$value + clogmod1$value - cloglog_unified$value)
