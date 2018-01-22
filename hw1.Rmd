@@ -1,0 +1,209 @@
+---
+title: "Homework1_601"
+author: "Vinny Paris"
+date: "1/21/2018"
+output: pdf_document
+---
+Please note the code can be downloaded at 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+##1
+
+After reading in the data I created a small function that found the liklihood function for a Binomial random variable with a Pregibon One-Parameter Link. The random variable was the tolerance of the the beetle at a certain level of toxicity. Please see attached hand written sheet for the derivation. After that both a logit and a cloglog model was fit to both series. When it was shown that the cloglog had a smaller liklihood in both samples the decision was made to use it's estimates as the starting value in optim for the linear parameters. The lambda's initial estimate was decided to be half way point between the logit (lambda = 1) and the cloglog (lambda = 0). The first of the two to be presented is the cloglog.
+
+
+It should be noted that I had to approximate the cloglog value by choosing a sufficently small lambda as it asymptotically tends to the complementary log-log model. Optim was then used to find the MLE's of the parameters. The 1 and 2 after the model/variable name indicate which series it's from. 
+```{r}
+n1 <- c(29,30,28,27,30,31,30,29)
+n2 <- c(30,30,34,29,33,28,32)
+d1 <- c(49.06, 52.99, 56.91, 60.84, 64.76, 68.69, 72.61, 76.54)
+d2 <- c(49.06, 52.99, 56.91, 60.84, 64.76, 68.69, 72.61)
+p1 <- c(6.9, 23.3, 32.9, 51.9, 76.7, 93.6, 96.7, 100)
+p2 <- c(13.3, 20, 26.5, 48.3, 87.9, 85.7, 100)
+dose1 <- log(d1)
+dose2 <- log(d2)
+data <- (data.frame(dose1,p1, n1))
+         
+         names(data) <- NULL
+         
+dit <- data.frame(dose2, p2, n2)
+
+         names(dit) <- NULL
+
+
+
+
+
+  b0 <- NULL
+  b1 <- NULL
+  lambda <- NULL
+  k <- NULL
+  n <- NULL
+  
+loglik <- function(data, par){
+  b0 <- par[1]
+  b1 <- par[2]
+  lambda <- .00001
+  x <- data[,1]
+  y <- data[,2]/100
+  n <- data[,3]
+  k <- b0+b1*x
+  mu <- 1 - 1/(1 + lambda*exp(k))^(1/lambda)
+  j <- -(n*(y * log(mu/(1-mu)) + log(1-mu)) + log(choose(n,round(y*n))))
+  return(sum(j))
+}
+clogmod1 <- optim(c(0,0), loglik, data = data, hessian = F)
+
+
+clogmod2 <- optim(c(0,0), loglik, data = dit, hessian = F)
+
+
+
+
+loglik <- function(data, par){
+  b0 <- par[1]
+  b1 <- par[2]
+  lambda <- 1
+  x <- data[,1]
+  y <- data[,2]/100
+  n <- data[,3]
+  k <- b0+b1*x
+  mu <- 1 - 1/(1 + lambda*exp(k))^(1/lambda)
+  j <- -(n*(y * log(mu/(1-mu)) + log(1-mu)) + log(choose(n,round(y*n))))
+  return(sum(j))
+}
+
+logitmod1 <- optim(c(0,0), loglik, data = data, hessian = F)
+
+
+logitmod2 <- optim(c(0,0), loglik, data = dit, hessian = F)
+
+
+loglik <- function(data, par){
+  b0 <- par[1]
+  b1 <- par[2]
+  lambda <- par[3]
+  x <- data[,1]
+  y <- data[,2]/100
+  n <- data[,3]
+  k <- b0+b1*x
+  mu <- 1 - 1/(1 + lambda*exp(k))^(1/lambda)
+  j <- -(n*(y * log(mu/(1-mu)) + log(1-mu)) + log(choose(n,round(y*n))))
+  l <- sum(j)
+  return(l)
+}
+
+jj1 <- optim(c(-40,10,.5), loglik, data = data, hessian = F)
+jj1
+
+jj2 <- optim(c(-40,10,.5), loglik, data = dit, hessian = F)
+jj2
+```
+
+
+```{r, echo = T}
+#Est vs Logit Series 1
+chi1 <- -2*(jj1$value - logitmod1$value)
+pchisq(chi1, 1, lower.tail = FALSE)
+
+#Est vs Cloglog Series 1
+chi1_clog <- -2*(jj1$value - clogmod1$value)
+pchisq(chi1_clog, 1, lower.tail = FALSE)
+
+#Est vs Cloglog Series 2
+chi2_clog <- -2*(jj2$value - clogmod2$value)
+pchisq(chi2_clog, 1, lower.tail = FALSE)
+
+
+#Est vs Logit Series 2
+chi2 <- -2*(jj2$value - logitmod2$value)
+pchisq(chi2, 1, lower.tail = FALSE)
+```
+What is interesting is that the cloglog model does statistically as well as the estimated link parameter model while the logit does statistically worse in the second series but not the first. As such, while it wasn't expressly stated I am going to use my complementary log-log model estimates for the rest of the assignment. 
+
+
+
+
+
+##2
+
+Whether there is a noticable difference in the populations of the two series can be tested by running a model with the two series pooled (but not simply adding up the two populations. Keep them as two seperate observations at each doseage). The logliklihood of this unified model can be compared to the sum of the two logliklihood's from the seperate model. This will be a 3 degrees of freedom difference in the models. Note unified is used to represent the combined data sets.
+```{r, echo=FALSE}
+loglik <- function(data, par){
+  b0 <- par[1]
+  b1 <- par[2]
+  lambda <- .0000001
+  x <- data[,1]
+  y <- data[,2]/100
+  n <- data[,3]
+  k <- b0+b1*x
+  mu <- 1 - 1/(1 + lambda*exp(k))^(1/lambda)
+  j <- -(n*(y * log(mu/(1-mu)) + log(1-mu)) + log(choose(n,round(y*n))))
+  return(sum(j))
+}
+
+pu <- c(p1,p2)
+doseu <- c(dose1, dose2)
+nu <- c(n1, n2)
+
+unified_data <- data.frame(doseu, pu, nu)
+cloglog_unified <- optim(c(0,0), loglik, data = unified_data, hessian = T)
+cloglog_unified
+```
+
+```{r, echo = T}
+chi_unified <- -2*(clogmod2$value + clogmod1$value - cloglog_unified$value)
+pchisq(chi_unified, 3, lower.tail = FALSE)
+
+```
+So then we find not statistical difference between running two series and just running one unified data set. 
+
+
+#3
+The final model then is a complementary log-log linked binomial. Please see the model presented in question 2 to see the estimates 
+```{r, echo = F, unified_data}
+final_model <- glm(pu/100 ~ doseu, family = binomial(link = cloglog))
+x <- unique(doseu)
+quartz(title="Doseage vs Death")
+plot(doseu,pu/100,xlab="Doseage Size",ylab="Probability of Death", main = 'Doseage vs Death')
+lines(unique(doseu),predict(final_model,data.frame(doseu = x),type="response"))
+
+
+mu <- -cloglog_unified$par[1]/cloglog_unified$par[2]
+sigma <- 1/(cloglog_unified$par[2])
+steps <- seq(3.6, 4.4, .01)
+tolerance <- exp((steps-mu)/sigma)/(sigma*(.00001*exp((steps-mu)/sigma)+1)^(1+1/.00001))
+quartz(title="Tolerance")
+plot(steps, tolerance, xlab = 'Doseage', ylab = 'Density', main = 'Tolerance')
+lines(steps, tolerance, col = 'blue')
+```
+
+#4 Assessment
+The Pearson residuals were taken from the data and plotted. There appears to be one possible outlier and maybe a general U-shape in the data. 
+
+   After that a Pearson Residual Chi Square test was ran to see if our model was statstically worse than claiming the doseages are in fact multinomial (the exhuastive model). Our p-value of .4647 suggests that there is no discernable difference in the two proposed models. It should be noted that the Pearson Residual Chi Square test is somewhat unstable for cells that have counts with less than 5 successes (e.g. the lower end doseages in this case).
+```{r}
+attach(unified_data)
+pred <- predict(final_model,data.frame(doseu ),type="response")
+Pearson_resid <- (((round(nu*pu/100)-nu*pred)/sqrt(nu*pred*(1-pred))))
+plot(doseu, Pearson_resid)
+Pearson_resid_test <- sum(((round(nu*pu/100)-nu*pred)^2/(nu*pred)))
+1-pchisq(Pearson_resid_test, 3)
+```
+
+
+#5
+Computations for this assignment were mostly hand made. Avaliable on github at  vinny-paris/One_Parameter_Pregibon_Link if you would like an inside look. The liklihood derivation is attached. Both the logit and the cloglog models were estimated withen my likelihood function with lambda = 1 for logit and lambda = .00001 for cloglog (lambda needs to approach 0). 
+
+
+
+
+
+
+
+
+
+
+
